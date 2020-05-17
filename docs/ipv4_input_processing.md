@@ -34,7 +34,7 @@
 - Next checks the IP Version
 - Next check the header length of IP, should be atleast `sizeof(struct ip)`
 - Check if hlen > m->m_len, then call `m_pullup`
-- Checking if the src address if multicast address. If yes then drop it
+- Checking if the src address is multicast address. If yes then drop it
 - If src or dst ip is of localhost format, then check if the interface is loopback or not. If not loopback, then drop the packet
 - Next we check the checksum value
     - If hardware checksum capability is on for the given device, then we check if Checksum calculated by the device was ok or not
