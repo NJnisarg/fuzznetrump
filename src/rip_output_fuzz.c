@@ -1,3 +1,8 @@
+/**
+ * To compile this file:
+ * gcc pkt_create.c rip_output_fuzz -lrump -lrump_vfs -lrumpnet -lrumpnet_net -lrumpnet_netinet
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
