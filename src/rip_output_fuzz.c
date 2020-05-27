@@ -1,24 +1,31 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<fcntl.h>
-#include<unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
-#include<netinet/in.h>
-#include<netinet/ip.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <rump/rump.h>
+#include <rump/rump_syscalls.h>
 
-#include"pkt_create.h"
+#include "pkt_create.h"
 
 
 int
 main()
 {
+    // We initialize rump
+    rump_init();
+
+    int errno;
     int sock = 0; 
     struct sockaddr_in serv_addr; 
     struct sockaddr_in client_addr;
 
     // Creating the socket
-    if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) 
+    if ((sock = rump_sys_socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) 
     { 
         printf("\n Socket creation error \n"); 
         return -1; 
@@ -40,17 +47,17 @@ main()
     }
 
     // Preparing the IP packet
-    int bufSize = 30; // Bytes;
-    char randBuf[bufSize];
-    memcpy(&randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufSize);
+    int bufLen = 30; // Bytes;
+    char randBuf[bufLen];
+    memcpy(&randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufLen);
 
     // randBuf holds the final packet
-    pkt_create_ipv4(randBuf, bufSize);
+    pkt_create_ipv4(randBuf, bufLen);
 
     // Setting the header included flag for RAW IP to not touch the IP header
     int one=1;
     const int *val = &one;
-    if (setsockopt (sock, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
+    if (rump_sys_setsockopt(sock, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
     {
         printf ("Warning: Cannot set HDRINCL!\n");
         return -1;
@@ -58,7 +65,20 @@ main()
 
 
     // Sending down the socket
-    sendto(sock , randBuf , bufSize , 0, (struct sockaddr *) &client_addr, sizeof (client_addr));
+    int written = rump_sys_sendto(sock , randBuf , bufLen , 0, (struct sockaddr *) &serv_addr, sizeof (serv_addr));
+    if (written == -1)
+    {
+        printf("sendto failed\n");
+        perror("Error in sending:");
+    }
+    else if ((size_t)written != bufLen)
+    {
+        printf("sendto did not write all data\n");
+        printf("Amount of buffer written: %d\n", written);
+    }
+    else{
+        printf("All data written\n");
+    }
 
     // Close and return
     close(sock);

@@ -1,11 +1,10 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
 
-#include<netinet/in.h>
-#include<netinet/ip.h>
-
-#include"pkt_create.h"
+#include <netinet/in.h>
+#include <netinet/ip.h>
 
 void
 print_ipv4Pkt(struct ip *iphdr){
@@ -20,8 +19,8 @@ print_ipv4Pkt(struct ip *iphdr){
     printf("TTL: %d\n", iphdr->ip_ttl);
     printf("Protocol: %d\n", iphdr->ip_p);
     printf("Checksum: %d\n", iphdr->ip_sum);
-    printf("Src Address: %d\n", iphdr->ip_src);
-    printf("Dst Address: %d\n", iphdr->ip_dst);
+    printf("Src Address: %x\n", iphdr->ip_src);
+    printf("Dst Address: %x\n", iphdr->ip_dst);
     printf("Extra data: %s\n", (char *)&iphdr->ip_dst + sizeof(iphdr->ip_dst));
 
     printf("========================================\n");
@@ -29,9 +28,9 @@ print_ipv4Pkt(struct ip *iphdr){
 }
 
 static uint16_t
-in_cksum(void *data, size_t len)
+in_cksum(const void *data, size_t len)
 {
-        uint16_t *buf = data;
+        const uint16_t *buf = data;
         unsigned sum;
 
         for (sum = 0; len > 1; len -= 2)
@@ -46,15 +45,15 @@ in_cksum(void *data, size_t len)
 }
 
 int
-pkt_create_ipv4(char *randBuf, int bufSize)
+pkt_create_ipv4(void *randBuf, size_t bufLen)
 {
     union ipv4Pkt{
-        char buf[bufSize];
+        char buf[bufLen];
         struct ip iphdr;
     } pkt;
 
     // Copy the random buffer to the pkt's buf
-    memcpy(&pkt.buf, randBuf, bufSize);
+    memcpy(&pkt.buf, randBuf, bufLen);
 
     // Next modify the fields of ip header
     struct ip *iphdr = &pkt.iphdr;
@@ -63,24 +62,30 @@ pkt_create_ipv4(char *randBuf, int bufSize)
     int hlen = sizeof(struct ip); // Setting the hlen to baseline 20 bytes ip header size
     iphdr->ip_hl = hlen >> 2; // Setting the field as a 32bit word values
 
-    iphdr->ip_len = bufSize; // In bytes
+    iphdr->ip_len = bufLen; // In bytes
     iphdr->ip_sum = in_cksum(iphdr, hlen); // Calculate the correct checksum of IP Header
+
+    inet_pton(AF_INET, "127.0.0.1", &iphdr->ip_dst); // Setting localhost as dst address so that we dont get error in sendto
 
     // Print the packet structure
     print_ipv4Pkt(iphdr);
 
     // Copy back the modified pkt.buf to randBuf
-    memcpy(randBuf, &pkt.buf, bufSize);
+    memcpy(randBuf, &pkt.buf, bufLen);
 
     return 0;
 }
 
-// int
-// main()
-// {
-//     int bufSize = 30; // Bytes;
-//     char randBuf[bufSize];
-//     memcpy(&randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufSize);
+#if 0
 
-//     pkt_create_ipv4(randBuf, bufSize);
-// }
+int
+main()
+{
+    int bufLen = 30; // Bytes;
+    char randBuf[bufLen];
+    memcpy(randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufLen);
+
+    pkt_create_ipv4(randBuf, bufLen);
+}
+
+#endif
