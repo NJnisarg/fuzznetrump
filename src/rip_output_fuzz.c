@@ -1,6 +1,6 @@
 /**
  * To compile this file:
- * gcc pkt_create.c rip_output_fuzz -lrump -lrump_vfs -lrumpnet -lrumpnet_net -lrumpnet_netinet
+ * gcc pkt_create.c rip_output_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet
  */
 
 #include <stdio.h>
@@ -16,7 +16,6 @@
 #include <rump/rump_syscalls.h>
 
 #include "pkt_create.h"
-
 
 int
 main()
