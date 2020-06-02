@@ -65,7 +65,7 @@ pkt_create_ipv4(void *randBuf, size_t bufLen)
     iphdr->ip_len = bufLen; // In bytes
     iphdr->ip_sum = in_cksum(iphdr, hlen); // Calculate the correct checksum of IP Header
 
-    inet_pton(AF_INET, "127.0.0.1", &iphdr->ip_dst); // Setting localhost as dst address so that we dont get error in sendto
+    inet_pton(AF_INET, "192.168.0.1", &iphdr->ip_dst); // Setting localhost as dst address so that we dont get error in sendto
 
     // Print the packet structure
     print_ipv4Pkt(iphdr);
@@ -77,7 +77,6 @@ pkt_create_ipv4(void *randBuf, size_t bufLen)
 }
 
 #if 0
-
 int
 main()
 {
@@ -87,5 +86,4 @@ main()
 
     pkt_create_ipv4(randBuf, bufLen);
 }
-
 #endif
