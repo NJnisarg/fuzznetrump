@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <arpa/inet.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-void
-print_ipv4Pkt(struct ip *iphdr){
+#include "extern.h"
+
+static void
+print_ipv4Pkt(const struct ip *iphdr){
     printf("========================================\n");
 
     printf("Header Len: %d\n", iphdr->ip_hl);
@@ -19,9 +22,10 @@ print_ipv4Pkt(struct ip *iphdr){
     printf("TTL: %d\n", iphdr->ip_ttl);
     printf("Protocol: %d\n", iphdr->ip_p);
     printf("Checksum: %d\n", iphdr->ip_sum);
-    printf("Src Address: %x\n", iphdr->ip_src);
-    printf("Dst Address: %x\n", iphdr->ip_dst);
-    printf("Extra data: %s\n", (char *)&iphdr->ip_dst + sizeof(iphdr->ip_dst));
+    printf("Src Address: %#.8x\n", ntohl(iphdr->ip_src.s_addr));
+    printf("Dst Address: %#.8x\n", ntohl(iphdr->ip_dst.s_addr));
+    printf("Extra data: %s\n",
+	(const char *)&iphdr->ip_dst + sizeof(iphdr->ip_dst));
 
     printf("========================================\n");
 
@@ -36,54 +40,39 @@ in_cksum(const void *data, size_t len)
         for (sum = 0; len > 1; len -= 2)
                 sum += *buf++;
         if (len)
-                sum += *(uint8_t *)buf;
+                sum += *(const uint8_t *)buf;
 
         sum = (sum >> 16) + (sum & 0xffff);
         sum += (sum >> 16);
 
-        return ~sum;
+        return (uint16_t)~sum;
 }
 
 int
-pkt_create_ipv4(void *randBuf, size_t bufLen)
+pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
+    const struct sockaddr_in *dst)
 {
-    union ipv4Pkt{
-        char buf[bufLen];
-        struct ip iphdr;
-    } pkt;
+	struct ip *iphdr = buf;
+	if (buflen < sizeof(struct ip)) {
+		errno = ENOSPC;
+		return -1;
+	}
 
-    // Copy the random buffer to the pkt's buf
-    memcpy(&pkt.buf, randBuf, bufLen);
+	iphdr->ip_v = IPVERSION;
 
-    // Next modify the fields of ip header
-    struct ip *iphdr = &pkt.iphdr;
-    iphdr->ip_v = IPVERSION;
+	// Setting the hlen to baseline 20 bytes ip header size
+	size_t hlen = sizeof(struct ip);
+	// Setting the field as a 32bit word values
+	iphdr->ip_hl = (hlen >> 2) & 0xf;
 
-    int hlen = sizeof(struct ip); // Setting the hlen to baseline 20 bytes ip header size
-    iphdr->ip_hl = hlen >> 2; // Setting the field as a 32bit word values
+	iphdr->ip_len = (uint16_t)buflen; // In bytes
+	// Calculate the correct checksum of IP Header
+	iphdr->ip_dst = dst->sin_addr;
+	iphdr->ip_src = src->sin_addr;
+	iphdr->ip_sum = in_cksum(iphdr, buflen);
 
-    iphdr->ip_len = bufLen; // In bytes
-    iphdr->ip_sum = in_cksum(iphdr, hlen); // Calculate the correct checksum of IP Header
+	// Print the packet structure
+	print_ipv4Pkt(iphdr);
 
-    inet_pton(AF_INET, "192.168.0.1", &iphdr->ip_dst); // Setting localhost as dst address so that we dont get error in sendto
-
-    // Print the packet structure
-    print_ipv4Pkt(iphdr);
-
-    // Copy back the modified pkt.buf to randBuf
-    memcpy(randBuf, &pkt.buf, bufLen);
-
-    return 0;
+	return 0;
 }
-
-#if 0
-int
-main()
-{
-    int bufLen = 30; // Bytes;
-    char randBuf[bufLen];
-    memcpy(randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufLen);
-
-    pkt_create_ipv4(randBuf, bufLen);
-}
-#endif
