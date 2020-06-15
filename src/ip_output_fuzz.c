@@ -1,6 +1,6 @@
 /**
  * To compile this file:
- * gcc ip_output_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
+ * gcc pkt_create.c net_config.c ip_output_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
  */
 
 #include <stdio.h>
@@ -21,25 +21,12 @@
 
 #include "extern.h"
 
-static const char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcd";
+static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcd";
 
 #define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "192.168.0.5"
 #define SERVER_ADDR "192.168.0.1"
 #define NETMASK "255.255.255.0"
-
-static int
-makeaddr(struct sockaddr_in *addr, const char *name)
-{
-	memset(addr, 0, sizeof(*addr));
-	addr->sin_family = AF_INET;
-	addr->sin_len = sizeof(*addr);
-	if (inet_pton(AF_INET, name, &addr->sin_addr) < 0)  { 
-		warnx("Invalid address/Address not supported"); 
-		return -1;
-	}
-	return 0;
-}
 
 int
 main(void)
@@ -47,7 +34,7 @@ main(void)
 	int sock;
 	struct sockaddr_in client_addr, server_addr, netmask;
 	int rv = EXIT_FAILURE;
-	char packet[sizeof(struct ip) + sizeof(randBuf)];
+	unsigned char packet[sizeof(randBuf)];
 
 	// We initialize rump
 	rump_init();
@@ -70,7 +57,7 @@ main(void)
 	// Creating the socket
 	if ((sock = rump_sys_socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) == -1) {
 		warn("Can't open raw socket");
-		close(tunfd);
+		rump_sys_close(tunfd);
 		return rv;
 	}
 	
@@ -85,10 +72,10 @@ main(void)
 
 	// packet holds the final packet
 	// copy the payload
-	memcpy(packet + sizeof(struct ip), randBuf, sizeof(randBuf));
+	memcpy(packet, randBuf, sizeof(randBuf));
 
-	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
-	    &client_addr) == -1)
+	if (pkt_create_ipv4(packet, sizeof(packet), &client_addr,
+	    &server_addr) == -1)
 	{
 		warn("Can't create packet");
 		goto out;

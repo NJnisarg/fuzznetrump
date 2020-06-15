@@ -1,49 +1,82 @@
 /**
  * To compile this file:
- * gcc ip_input_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
+ * gcc pkt_create.c net_config.c ip_input_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <err.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 #include <arpa/inet.h>
 
+#include <netinet/in.h>
+#include <netinet/ip.h>
+
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "pkt_create.c"
-#include "net_config.c"
+#include "extern.h"
 
-int main()
+static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
+
+#define DEVICE "/dev/tun0"
+#define CLIENT_ADDR "192.168.0.5"
+#define SERVER_ADDR "192.168.0.1"
+#define NETMASK "255.255.255.0"
+
+
+int 
+main(void)
 {
 
+	struct sockaddr_in client_addr, server_addr, netmask;
+	int rv = EXIT_FAILURE;
+	unsigned char packet[sizeof(randBuf)];
+
+	// Creating the packet here
+	printf("Length of original Data: %ld\n", sizeof(randBuf));
+	printf("Original Data:\n");
+	int bufLen = sizeof(randBuf);
+	for(int i=0;i<bufLen;i++)
+		printf("%c", randBuf[i]);
+	printf("\n");
+
+	// We initialize rump
 	rump_init();
 
-	int errno;
-
-    // Preparing the IP packet
-    int bufLen = 30; // Bytes;
-    char randBuf[bufLen];
-    memcpy(&randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufLen);
-
-    // randBuf holds the final packet
-    pkt_create_ipv4(randBuf, bufLen);
+	// Setting socket addresses for using with ip src and dest
+	if (makeaddr(&client_addr, CLIENT_ADDR) == -1)
+		return rv;
+	if (makeaddr(&server_addr, SERVER_ADDR) == -1)
+		return rv;
+	if (makeaddr(&netmask, NETMASK) == -1)
+		return rv;
 
 	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun("/dev/tun0", "tun0", "192.168.0.5", "255.255.255.0", "192.168.0.1");
-    if(tunfd < 0)
-	{
-		printf("Error in creating and configuring tun0 device");
-		return -1;
-	}
-    else{
-		int written = rump_sys_write(tunfd, randBuf, bufLen);
-		printf("Written: %d\n", written);
+	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
+	    &netmask);
+	if (tunfd == -1)
+		return rv;
+	
+	memcpy(packet, randBuf, sizeof(randBuf));
 
-		rump_sys_close(tunfd);
-		return 0;
-    }
+	if (pkt_create_ipv4(packet, sizeof(packet), &client_addr,
+	    &server_addr) == -1)
+	{
+		warn("Can't create packet");
+		goto out;
+	}
+
+	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
+	printf("Written: %ld\n", written);
+
+	rv = EXIT_SUCCESS;
+
+out:
+	rump_sys_close(tunfd);
+	return rv;
 }

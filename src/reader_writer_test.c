@@ -1,3 +1,8 @@
+/**
+ * To compile this file:
+ * gcc pkt_create.c net_config.c reader_writer_test.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,37 +21,24 @@
 
 #include "extern.h"
 
+static unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
+
 #define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "192.168.0.5"
 #define SERVER_ADDR "192.168.0.1"
 #define NETMASK "255.255.255.0"
 
-static int
-makeaddr(struct sockaddr_in *addr, const char *name)
-{
-	memset(addr, 0, sizeof(*addr));
-	addr->sin_family = AF_INET;
-	addr->sin_len = sizeof(*addr);
-	if (inet_pton(AF_INET, name, &addr->sin_addr) < 0)  { 
-		warnx("Invalid address/Address not supported"); 
-		return -1;
-	}
-	return 0;
-}
-
-
-int main()
+int 
+main(void)
 {
     int sock;
 	struct sockaddr_in client_addr, server_addr, netmask;
 	int rv = EXIT_FAILURE;
 
 	// Creating the packet here
-	int bufLen = 30; // Bytes;
-    unsigned char randBuf[bufLen];
-    memcpy(&randBuf, "abcdefghijklmnopqrstuvwxyzabcd", bufLen);
-	printf("Length of original Data: %d\n", bufLen);
+	printf("Length of original Data: %ld\n", sizeof(randBuf));
 	printf("Original Data:\n");
+	int bufLen = sizeof(randBuf);
 	for(int i=0;i<bufLen;i++)
 		printf("%c", randBuf[i]);
 	printf("\n");
@@ -125,7 +117,7 @@ int main()
 		goto out;
 	}
 
-	printf("Amount of data read:%d\n", red);
+	printf("Amount of data read:%ld\n", red);
 
 	// Reading the IP packet
 	struct ip *iphdr = (struct ip*)(readBuf);
@@ -136,20 +128,21 @@ int main()
 	iphdr->ip_src = server_addr.sin_addr;
 
 	// Writing the packet on the wire of tun Device
-	written = rump_sys_write(tunfd, readBuf, red);
-	printf("Written: %d\n", written);
+	written = rump_sys_write(tunfd, readBuf, (size_t)red);
+	printf("Written: %ld\n", written);
 
 	// Receiving from the socket
-	memset(randBuf, 0, bufLen);
-	red = rump_sys_recvfrom(sock, randBuf, bufLen, 0, NULL, NULL);
+	memset(randBuf, 0, sizeof(randBuf));
+	red = rump_sys_recvfrom(sock, randBuf, sizeof(randBuf), 0, NULL, NULL);
 	if (red == -1) {
 		warn("recvfrom failed");
 		goto out;
 	}
-	printf("Amount of data read from socket: %d\n", red);
+	printf("Amount of data read from socket: %ld\n", red);
 	printf("Data read from socket:\n");
 	for(int i=0;i<red;i++)
 		printf("%c", randBuf[i]);
+	printf("\n");
 
 	rv = EXIT_SUCCESS;
 out:
@@ -157,6 +150,4 @@ out:
 	rump_sys_close(tunfd);
 	rump_sys_close(sock);
 	return rv;
-
-    // After that we will read the echoed value sent as a reply from the socket
 }

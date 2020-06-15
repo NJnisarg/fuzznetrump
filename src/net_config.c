@@ -16,13 +16,26 @@
 #include "extern.h"
 
 int
+makeaddr(struct sockaddr_in *addr, const char *name)
+{
+	memset(addr, 0, sizeof(*addr));
+	addr->sin_family = AF_INET;
+	addr->sin_len = sizeof(*addr);
+	if (inet_pton(AF_INET, name, &addr->sin_addr) < 0)  { 
+		warnx("Invalid address/Address not supported"); 
+		return -1;
+	}
+	return 0;
+}
+
+int
 netcfg_rump_if_tun(const char *tunpath, const struct sockaddr_in *src,
     const struct sockaddr_in *dst, const struct sockaddr_in *mask)
 {
 	struct ifaliasreq ia;
 	struct ifreq ifr;
 	const char *ifname = strrchr(tunpath, '/') + 1;
-	struct sockaddr_in *sin;
+	// struct sockaddr_in *sin;
 	int s, tunfd;
 
 	if ((tunfd = rump_sys_open(tunpath, O_RDWR)) == -1){
