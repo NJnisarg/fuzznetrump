@@ -48,11 +48,11 @@ netcfg_rump_if_tun(const char *tunpath, const struct sockaddr_in *src,
 	*(struct sockaddr_in *)&ia.ifra_dstaddr = *dst;
 
 	/* Broadcast address */
-	sin = (struct sockaddr_in *)&ia.ifra_broadaddr;
-	memset(sin, 0, sizeof(*sin));
-	sin->sin_family = AF_INET;
-	sin->sin_len = sizeof(struct sockaddr_in);
-	sin->sin_addr.s_addr = src->sin_addr.s_addr | ~mask->sin_addr.s_addr;
+	// sin = (struct sockaddr_in *)&ia.ifra_broadaddr;
+	// memset(sin, 0, sizeof(*sin));
+	// sin->sin_family = AF_INET;
+	// sin->sin_len = sizeof(struct sockaddr_in);
+	// sin->sin_addr.s_addr = src->sin_addr.s_addr | ~mask->sin_addr.s_addr;
 
 	/* IOCTLs */
 	if (rump_sys_ioctl(s, SIOCAIFADDR, &ia) == -1) {
@@ -76,6 +76,6 @@ netcfg_rump_if_tun(const char *tunpath, const struct sockaddr_in *src,
 
 out:
 	rump_sys_close(tunfd);
-        rump_sys_close(s);
+    rump_sys_close(s);
 	return -1;
 }

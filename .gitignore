@@ -3,3 +3,5 @@ src/trial_error_code
 src/trial_error_code/
 src/trial_error_code/*
 src/trial_error_code/**
+.vscode/
+.vscode/**

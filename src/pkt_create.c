@@ -66,10 +66,19 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 	iphdr->ip_hl = (hlen >> 2) & 0xf;
 
 	iphdr->ip_len = (uint16_t)buflen; // In bytes
-	// Calculate the correct checksum of IP Header
+
 	iphdr->ip_dst = dst->sin_addr;
 	iphdr->ip_src = src->sin_addr;
-	iphdr->ip_sum = in_cksum(iphdr, buflen);
+
+    // Making things right
+    iphdr->ip_tos = 0;
+    iphdr->ip_p = 17;
+    iphdr->ip_ttl = 64;
+    iphdr->ip_off = 0;
+    iphdr->ip_id = htons(0);
+
+    // Calculate the correct checksum of IP Header
+    iphdr->ip_sum = in_cksum(iphdr, sizeof(struct ip));
 
 	// Print the packet structure
 	print_ipv4Pkt(iphdr);
