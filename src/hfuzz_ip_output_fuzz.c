@@ -17,6 +17,10 @@
 
 #include "extern.h"
 
+#define DEVICE "/dev/tun0"
+#define CLIENT_ADDR "192.168.0.5"
+#define SERVER_ADDR "192.168.0.1"
+#define NETMASK "255.255.255.0"
 
 /* Global vars */
 int tunfd, sock;
@@ -40,9 +44,6 @@ ip_output_fuzz(const uint8_t *randBuf, size_t bufLen)
 		warn("Can't create packet");
 		return rv;
 	}
-
-    // randBuf holds the final packet
-    pkt_create_ipv4(randBuf, bufLen);
 
     // Sending down the socket
     ssize_t written = rump_sys_sendto(sock , randBuf , bufLen , 0, (struct sockaddr *) &server_addr, sizeof (server_addr));
