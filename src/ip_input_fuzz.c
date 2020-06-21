@@ -64,8 +64,8 @@ main(void)
 	
 	memcpy(packet, randBuf, sizeof(randBuf));
 
-	if (pkt_create_ipv4(packet, sizeof(packet), &client_addr,
-	    &server_addr) == -1)
+	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
+	    &client_addr) == -1)
 	{
 		warn("Can't create packet");
 		goto out;
