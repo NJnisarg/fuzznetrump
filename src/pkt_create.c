@@ -6,8 +6,12 @@
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 
 #include "extern.h"
+
+#define IP_HDR_SIZE sizeof(struct ip)
+
 
 static void
 print_ipv4Pkt(const struct ip *iphdr){
@@ -24,11 +28,27 @@ print_ipv4Pkt(const struct ip *iphdr){
     printf("Checksum: %d\n", iphdr->ip_sum);
     printf("Src Address: %#.8x\n", ntohl(iphdr->ip_src.s_addr));
     printf("Dst Address: %#.8x\n", ntohl(iphdr->ip_dst.s_addr));
+
     printf("Extra data: %s\n",
 	(const char *)&iphdr->ip_dst + sizeof(iphdr->ip_dst));
 
     printf("========================================\n");
 
+}
+
+static void print_udpPkt(const struct udphdr *udp)
+{
+    printf("========================================\n");
+
+    printf("Source Port: %d\n", udp->uh_sport);
+    printf("Dest Port: %d\n", udp->uh_dport);
+    printf("Len: %d\n", udp->uh_ulen);
+    printf("Checksum: %d\n", udp->uh_sum);
+
+    printf("Extra data: %s\n",
+	(const char *)&udp->uh_sum + sizeof(udp->uh_sum));
+
+    printf("========================================\n");
 }
 
 static uint16_t
@@ -84,4 +104,24 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 	print_ipv4Pkt(iphdr);
 
 	return 0;
+}
+
+int
+pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
+    const struct sockaddr_in *dst)
+{
+    int rv = pkt_create_ipv4(buf, buflen, src, dst);
+    if(rv == -1)
+    {
+        errno = ENOSPC;
+		return rv;
+    }
+
+    // We will set only the checksum to zero. Other fields we will let be random
+    struct udphdr *udp = (struct udphdr *)(buf + IP_HDR_SIZE);
+    udp->uh_sum = 0; // If we set this to zero the checksum is made optional and will be ignored
+
+    print_udpPkt(udp);
+
+    return 0;
 }
