@@ -68,16 +68,10 @@ print_icmpPkt(const struct icmp *icp)
     printf("ICMP Type: %d\n", icp->icmp_type);
     printf("ICMP Type: %d\n", icp->icmp_code);
     printf("ICMP Type: %d\n", icp->icmp_cksum);
-    printf("Dest Port: %d\n", udp->uh_dport);
-    printf("Len: %d\n", udp->uh_ulen);
-    printf("Checksum: %d\n", udp->uh_sum);
-
-    printf("Extra data: %s\n",
-	(const char *)&udp->uh_sum + sizeof(udp->uh_sum));
 
     printf("========================================\n");
 }
-
+ 
 static uint16_t
 in_cksum(const void *data, size_t len)
 {
@@ -202,7 +196,15 @@ int
 pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
     const struct sockaddr_in *dst)
 {
-    int rv = pkt_create_ipv4(buf, buflen, src, dst);
+    int rv = 0;
+    if(buflen < IP_HDR_SIZE + ICMP_MINLEN)
+    {
+        errno = ENOSPC;
+        rv = -1;
+        return rv;
+    }
+
+    rv = pkt_create_ipv4(buf, buflen, src, dst);
     if(rv == -1)
     {
         errno = ENOSPC;
@@ -216,5 +218,5 @@ pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
 
     print_icmpPkt(icp);
 
-    return 0;
+    return rv;
 }
