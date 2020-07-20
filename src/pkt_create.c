@@ -6,12 +6,14 @@
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
 #include "extern.h"
 
 #define IP_HDR_SIZE sizeof(struct ip)
+#define IP6_HDR_SIZE sizeof(struct ip6_hdr);
 
 #define NUM_CODE_UNREACH 16
 #define NUM_CODE_REDIRECT 4
@@ -139,7 +141,7 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
     const struct sockaddr_in *dst)
 {
 	struct ip *iphdr = buf;
-	if (buflen < sizeof(struct ip)) {
+	if (buflen < IP_HDR_SIZE) {
 		errno = ENOSPC;
 		return -1;
 	}
@@ -168,6 +170,27 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 
 	// Print the packet structure
 	print_ipv4Pkt(iphdr);
+
+	return 0;
+}
+
+int
+pkt_create_ipv6(void *buf, size_t buflen, const struct sockaddr_in6 *src,
+    const struct sockaddr_in6 *dst)
+{
+	struct ip6_hdr *iphdr = buf;
+	if (buflen < IP6_HDR_SIZE) {
+		errno = ENOSPC;
+		return -1;
+	}
+
+    // First clear the top 4 bits for IPV6
+	iphdr->ip6_vfc &= 0x0f; 
+    // Then set them to 0x60
+    iphdr->ip6_vfc |= IPV6_VERSION; 
+    iphdr->ip6_hops = 255; // Default to max limit
+    iphdr->ip6_src = src->sin6_addr;
+    iphdr->ip6_src = dst->sin6_addr;
 
 	return 0;
 }
