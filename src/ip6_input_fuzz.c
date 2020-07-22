@@ -21,17 +21,17 @@
 
 #include "extern.h"
 
-static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
+static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabc";
 
 #define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
-#define SERVER_ADDR "2001:0db8:85a3:0000:0000:8a2e:0370:7335"
-
+#define CLIENT_ADDR "2001:db8::1234"
+#define SERVER_ADDR "2001:db8::1235"
+#define PREFIX_MASK "ffff:ffff:ffff:ffff:0000:0000:0000:0000"
 int 
 main(void)
 {
 
-	struct sockaddr_in6 client_addr, server_addr;
+	struct sockaddr_in6 client_addr, server_addr, prefix_mask;
 	int rv = EXIT_FAILURE;
 	unsigned char packet[sizeof(randBuf)];
 
@@ -51,9 +51,11 @@ main(void)
 		return rv;
 	if (makeaddr6(&server_addr, SERVER_ADDR) == -1)
 		return rv;
+	if (makeaddr6(&prefix_mask, PREFIX_MASK) == -1)
+		return rv;
 
 	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun6(DEVICE, &client_addr, &server_addr);
+	int tunfd = netcfg_rump_if_tun6(DEVICE, &client_addr, &server_addr, &prefix_mask);
 	if (tunfd == -1)
 		return rv;
 	

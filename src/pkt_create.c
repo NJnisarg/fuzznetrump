@@ -13,7 +13,7 @@
 #include "extern.h"
 
 #define IP_HDR_SIZE sizeof(struct ip)
-#define IP6_HDR_SIZE sizeof(struct ip6_hdr);
+#define IP6_HDR_SIZE sizeof(struct ip6_hdr)
 
 #define NUM_CODE_UNREACH 16
 #define NUM_CODE_REDIRECT 4
