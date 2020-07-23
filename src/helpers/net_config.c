@@ -50,7 +50,6 @@ netcfg_rump_if_tun(const char *tunpath, const struct sockaddr_in *src,
 	struct ifaliasreq ia;
 	struct ifreq ifr;
 	const char *ifname = strrchr(tunpath, '/') + 1;
-	// struct sockaddr_in *sin;
 	int s, tunfd;
 
 	if ((tunfd = rump_sys_open(tunpath, O_RDWR)) == -1){

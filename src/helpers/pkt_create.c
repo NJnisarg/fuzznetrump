@@ -22,6 +22,9 @@
 #define NUM_CODE_PARAMPROB 3
 #define NUM_CODE_PHOTURIS 6
 
+/*
+    PACKET STRUCTURE PRINTING
+*/
 
 static void
 print_ipv4Pkt(const struct ip *iphdr){
@@ -38,9 +41,6 @@ print_ipv4Pkt(const struct ip *iphdr){
     printf("Checksum: %d\n", iphdr->ip_sum);
     printf("Src Address: %#.8x\n", ntohl(iphdr->ip_src.s_addr));
     printf("Dst Address: %#.8x\n", ntohl(iphdr->ip_dst.s_addr));
-
-    /* printf("Extra data: %s\n",
-	(const char *)&iphdr->ip_dst + sizeof(iphdr->ip_dst)); */
 
     printf("========================================\n");
 
@@ -74,6 +74,10 @@ print_icmpPkt(const struct icmp *icp)
     printf("========================================\n");
 }
  
+/*
+    INTERNET CHECKSUM
+*/
+
 static uint16_t
 in_cksum(const void *data, size_t len)
 {
@@ -90,6 +94,10 @@ in_cksum(const void *data, size_t len)
 
         return (uint16_t)~sum;
 }
+
+/*
+    ICMP HELPERS
+*/
 
 uint8_t
 getRandType(uint8_t type)
@@ -136,6 +144,10 @@ getRandCode(uint8_t type, uint8_t code)
     return retCode;
 }
 
+/*
+    PACKET STRUCTURE CREATION
+*/
+
 int
 pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
     const struct sockaddr_in *dst)
@@ -149,7 +161,7 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 	iphdr->ip_v = IPVERSION;
 
 	// Setting the hlen to baseline 20 bytes ip header size
-	size_t hlen = sizeof(struct ip);
+	size_t hlen = IP_HDR_SIZE;
 	// Setting the field as a 32bit word values
 	iphdr->ip_hl = (hlen >> 2) & 0xf;
 
