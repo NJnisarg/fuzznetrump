@@ -19,21 +19,20 @@
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "extern.h"
+#include "../include/net_config.h"
+#include "../include/pkt_create.h"
 
-static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
+static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabc";
 
 #define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "192.168.0.5"
-#define SERVER_ADDR "192.168.0.1"
-#define NETMASK "255.255.255.0"
-
-
+#define CLIENT_ADDR "2001:db8::1234"
+#define SERVER_ADDR "2001:db8::1235"
+#define PREFIX_MASK "ffff:ffff:ffff:ffff:0000:0000:0000:0000"
 int 
 main(void)
 {
 
-	struct sockaddr_in client_addr, server_addr, netmask;
+	struct sockaddr_in6 client_addr, server_addr, prefix_mask;
 	int rv = EXIT_FAILURE;
 	unsigned char packet[sizeof(randBuf)];
 
@@ -49,22 +48,21 @@ main(void)
 	rump_init();
 
 	// Setting socket addresses for using with ip src and dest
-	if (makeaddr(&client_addr, CLIENT_ADDR) == -1)
+	if (makeaddr6(&client_addr, CLIENT_ADDR) == -1)
 		return rv;
-	if (makeaddr(&server_addr, SERVER_ADDR) == -1)
+	if (makeaddr6(&server_addr, SERVER_ADDR) == -1)
 		return rv;
-	if (makeaddr(&netmask, NETMASK) == -1)
+	if (makeaddr6(&prefix_mask, PREFIX_MASK) == -1)
 		return rv;
 
 	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
-	    &netmask);
+	int tunfd = netcfg_rump_if_tun6(DEVICE, &client_addr, &server_addr, &prefix_mask);
 	if (tunfd == -1)
 		return rv;
 	
 	memcpy(packet, randBuf, sizeof(randBuf));
 
-	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
+	if (pkt_create_ipv6(packet, sizeof(packet), &server_addr,
 	    &client_addr) == -1)
 	{
 		warn("Can't create packet");

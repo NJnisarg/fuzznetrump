@@ -19,7 +19,8 @@
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "extern.h"
+#include "../include/net_config.h"
+#include "../include/pkt_create.h"
 
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcd";
 

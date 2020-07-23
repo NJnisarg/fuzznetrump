@@ -15,7 +15,7 @@
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "extern.h"
+#include "../include/net_config.h"
 
 int
 makeaddr(struct sockaddr_in *addr, const char *name)

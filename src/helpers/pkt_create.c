@@ -10,7 +10,7 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-#include "extern.h"
+#include "../include/pkt_create.h"
 
 #define IP_HDR_SIZE sizeof(struct ip)
 #define IP6_HDR_SIZE sizeof(struct ip6_hdr)

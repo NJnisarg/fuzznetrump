@@ -11,34 +11,37 @@
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "extern.h"
+#include "../include/net_config.h"
+#include "../include/pkt_create.h"
 
 #define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "2001:db8::1234"
-#define SERVER_ADDR "2001:db8::1235"
-#define PREFIX_MASK "ffff:ffff:ffff:ffff:0000:0000:0000:0000"
+#define CLIENT_ADDR "192.168.0.5"
+#define SERVER_ADDR "192.168.0.1"
+#define NETMASK "255.255.255.0"
+#define IP_HDR_SIZE sizeof(struct ip)
 
 /* Global vars */
 int tunfd, sock;
-struct sockaddr_in6 client_addr, server_addr, prefix;
+struct sockaddr_in client_addr, server_addr, netmask;
 
 /* entry point for library fuzzers (libFuzzer/honggfuzz) */
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 
 
 static int
-ip6_input_fuzz(const uint8_t *randBuf, size_t bufLen)
+udp_input_fuzz(const uint8_t *randBuf, size_t bufLen)
 {
     int rv = -1;
     // Preparing the IP packet
-    unsigned char packet[bufLen];
-    memcpy(packet, randBuf, bufLen);
+    unsigned char packet[IP_HDR_SIZE + bufLen];
+    memcpy(packet + IP_HDR_SIZE, randBuf, bufLen);
 
-	if (pkt_create_ipv6(packet, sizeof(packet), &server_addr,
+	if (pkt_create_udp4(packet, sizeof(packet), &server_addr,
 	    &client_addr) == -1)
 	{
 		warn("Can't create packet");
@@ -71,22 +74,22 @@ void Initialize()
         __builtin_trap();
 
 	// Setting socket addresses for using with ip src and dest
-	if (makeaddr6(&client_addr, CLIENT_ADDR) == -1)
+	if (makeaddr(&client_addr, CLIENT_ADDR) == -1)
 		__builtin_trap();
-	if (makeaddr6(&server_addr, SERVER_ADDR) == -1)
+	if (makeaddr(&server_addr, SERVER_ADDR) == -1)
 		__builtin_trap();
-	if (makeaddr6(&prefix, PREFIX_MASK) == -1)
+	if (makeaddr(&netmask, NETMASK) == -1)
 		__builtin_trap();
 
 	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun6(DEVICE, &client_addr, &server_addr,
-	    &prefix);
+	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
+	    &netmask);
 	if (tunfd == -1)
 		__builtin_trap();
 
 	// Creating the socket
-	if ((sock = rump_sys_socket(AF_INET6, SOCK_RAW, IPPROTO_RAW)) == -1) {
-		warn("Can't open raw socket");
+	if ((sock = rump_sys_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		warn("Can't open udp socket");
 		rump_sys_close(tunfd);
 		__builtin_trap();
 	}
@@ -98,16 +101,6 @@ void Initialize()
 		warn("Can't bind socket"); 
 		goto out;
 	}
-
-	// Setting the header included flag for RAW IP to not touch the
-	// IP header
-	// int one = 1;
-	// if (rump_sys_setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &one,
-	//     sizeof(one)) == -1)
-	// {
-	//     warn("Cannot set HDRINCL!");
-	//     goto out;
-	// }
 
     return;
 
@@ -127,7 +120,7 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 		Initialized = true;
 	}
 
-	if (ip6_input_fuzz(Data, Size)) {
+	if (udp_input_fuzz(Data, Size)) {
 		/**
 		 * We shall return 0 on error paths as otherwise
 		 * a fuzzer (honggfuzz) restarts the fuzzing process 

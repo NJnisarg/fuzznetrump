@@ -11,16 +11,19 @@
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <netinet/udp.h>
 
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "extern.h"
+#include "../include/net_config.h"
+#include "../include/pkt_create.h"
 
 #define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "192.168.0.5"
 #define SERVER_ADDR "192.168.0.1"
 #define NETMASK "255.255.255.0"
+#define IP_HDR_SIZE sizeof(struct ip)
 
 /* Global vars */
 int tunfd, sock;
@@ -31,14 +34,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 
 
 static int
-ip_input_fuzz(const uint8_t *randBuf, size_t bufLen)
+icmp_input_fuzz(const uint8_t *randBuf, size_t bufLen)
 {
     int rv = -1;
     // Preparing the IP packet
-    unsigned char packet[bufLen];
-    memcpy(packet, randBuf, bufLen);
+    unsigned char packet[IP_HDR_SIZE + bufLen];
+    memcpy(packet + IP_HDR_SIZE, randBuf, bufLen);
 
-	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
+	if (pkt_create_icmp4(packet, sizeof(packet), &server_addr,
 	    &client_addr) == -1)
 	{
 		warn("Can't create packet");
@@ -85,8 +88,8 @@ void Initialize()
 		__builtin_trap();
 
 	// Creating the socket
-	if ((sock = rump_sys_socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) == -1) {
-		warn("Can't open raw socket");
+	if ((sock = rump_sys_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		warn("Can't open socket");
 		rump_sys_close(tunfd);
 		__builtin_trap();
 	}
@@ -97,16 +100,6 @@ void Initialize()
 	{ 
 		warn("Can't bind socket"); 
 		goto out;
-	}
-
-	// Setting the header included flag for RAW IP to not touch the
-	// IP header
-	int one = 1;
-	if (rump_sys_setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &one,
-	    sizeof(one)) == -1)
-	{
-	    warn("Cannot set HDRINCL!");
-	    goto out;
 	}
 
     return;
@@ -127,7 +120,7 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 		Initialized = true;
 	}
 
-	if (ip_input_fuzz(Data, Size)) {
+	if (icmp_input_fuzz(Data, Size)) {
 		/**
 		 * We shall return 0 on error paths as otherwise
 		 * a fuzzer (honggfuzz) restarts the fuzzing process 

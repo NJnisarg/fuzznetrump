@@ -15,7 +15,8 @@
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
 
-#include "extern.h"
+#include "../include/net_config.h"
+#include "../include/pkt_create.h"
 
 #define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "192.168.0.5"
