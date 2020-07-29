@@ -25,11 +25,10 @@
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
 
 #define DEVICE "/dev/tun0"
+#define DEVICENAME "tap0"
 #define CLIENT_ADDR "192.168.0.5"
 #define SERVER_ADDR "192.168.0.1"
 #define NETMASK "255.255.255.0"
-#define CLIENT_MAC "192.168.0.1"
-#define SERVER_MAC "192.168.0.1"
 
 
 int 
@@ -37,6 +36,7 @@ main(void)
 {
 
 	struct sockaddr_in client_addr, server_addr, netmask;
+	char* ether_addr;
 	int rv = EXIT_FAILURE;
 	unsigned char packet[sizeof(randBuf)];
 
@@ -60,9 +60,9 @@ main(void)
 		return rv;
 
 	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
+	int tapfd = netcfg_rump_if_tap(DEVICENAME, DEVICE, ether_addr, &client_addr, &server_addr,
 	    &netmask);
-	if (tunfd == -1)
+	if (tapfd == -1)
 		return rv;
 	
 	memcpy(packet, randBuf, sizeof(randBuf));
@@ -74,12 +74,12 @@ main(void)
 		goto out;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
+	ssize_t written = rump_sys_write(tapfd, randBuf, sizeof(randBuf));
 	printf("Written: %ld\n", written);
 
 	rv = EXIT_SUCCESS;
 
 out:
-	rump_sys_close(tunfd);
+	rump_sys_close(tapfd);
 	return rv;
 }

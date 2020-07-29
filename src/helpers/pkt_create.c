@@ -255,3 +255,9 @@ pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
 
     return rv;
 }
+
+int
+pkt_create_ether(void *buf, size_t buflen, const char* src_mac, const char* dst_mac)
+{
+    
+}
