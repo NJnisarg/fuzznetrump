@@ -22,7 +22,7 @@
 #include "../include/net_config.h"
 #include "../include/pkt_create.h"
 
-static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
+static const unsigned char randBuf[] = "a";
 
 #define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "192.168.0.5"
@@ -48,7 +48,7 @@ main(void)
 	// We initialize rump
 	rump_init();
 
-	// Setting socket addresses for using with ip src and dest
+	// // Setting socket addresses for using with ip src and dest
 	if (makeaddr(&client_addr, CLIENT_ADDR) == -1)
 		return rv;
 	if (makeaddr(&server_addr, SERVER_ADDR) == -1)
@@ -56,7 +56,7 @@ main(void)
 	if (makeaddr(&netmask, NETMASK) == -1)
 		return rv;
 
-	// Setting up the tun device
+	// // Setting up the tun device
 	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
 	    &netmask);
 	if (tunfd == -1)
@@ -64,14 +64,18 @@ main(void)
 	
 	memcpy(packet, randBuf, sizeof(randBuf));
 
-	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
-	    &client_addr) == -1)
-	{
-		warn("Can't create packet");
-		goto out;
-	}
+	// if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
+	//     &client_addr) == -1)
+	// {
+	// 	warn("Can't create packet");
+	// 	goto out;
+	// }
 
-    rumpns_fuzzrump_ip_input((char *)packet, sizeof(packet), 0);
+	packet[0] = (char)0x40;
+
+	rump_schedule();
+    rumpns_fuzzrump_ip_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
 	// ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
 	// printf("Written: %ld\n", written);
@@ -79,6 +83,6 @@ main(void)
 	rv = EXIT_SUCCESS;
 
 out:
-	rump_sys_close(tunfd);
+	// rump_sys_close(tunfd);
 	return rv;
 }

@@ -165,7 +165,7 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 	// Setting the field as a 32bit word values
 	iphdr->ip_hl = (hlen >> 2) & 0xf;
 
-	iphdr->ip_len = (uint16_t)buflen; // In bytes
+	iphdr->ip_len = htons((uint16_t)buflen); // In bytes
 
 	iphdr->ip_dst = dst->sin_addr;
 	iphdr->ip_src = src->sin_addr;
@@ -259,5 +259,5 @@ pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
 int
 pkt_create_ether(void *buf, size_t buflen, const char* src_mac, const char* dst_mac)
 {
-    
+    return 1;
 }
