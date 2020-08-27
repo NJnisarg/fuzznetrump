@@ -19,8 +19,8 @@
 #include "../include/pkt_create.h"
 
 #define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "192.168.0.5"
-#define SERVER_ADDR "192.168.0.1"
+#define CLIENT_ADDR "127.0.0.1"
+#define SERVER_ADDR "127.0.0.1"
 #define NETMASK "255.255.255.0"
 
 /* Global vars */
@@ -40,24 +40,16 @@ ip_input_fuzz(const uint8_t *randBuf, size_t bufLen)
     memcpy(packet, randBuf, bufLen);
 
 	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
-	    &client_addr) == -1)
+	    &client_addr, 0, 0) == -1)
 	{
 		warn("Can't create packet");
 		return rv;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	rv = 0;
-
-    if (written == -1) {
-		warn("sendto failed");
-		return rv;
-	}
-
-	if ((size_t)written != sizeof(packet)) {
-		warnx("Incomplete write: %zd != %zu", written, sizeof(packet));
-		return rv;
-	}
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_ip_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
     rv = 0;
     return rv;
@@ -139,7 +131,3 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
 	return 0;
 }
-
-#ifdef MAIN
-
-#endif

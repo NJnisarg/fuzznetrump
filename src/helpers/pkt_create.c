@@ -145,12 +145,14 @@ getRandCode(uint8_t type, uint8_t code)
 }
 
 /*
-    PACKET STRUCTURE CREATION
+* Packet Structure creation for IPv4
+* Set the wellFormedOpt to 1 to make a well formed packet for upper protocols
+* Use the protocol value to set the upper layer protocol
 */
 
 int
 pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
-    const struct sockaddr_in *dst)
+    const struct sockaddr_in *dst, int wellFormedOpt, int protocol)
 {
 	struct ip *iphdr = buf;
 	if (buflen < IP_HDR_SIZE) {
@@ -170,12 +172,15 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 	iphdr->ip_dst = dst->sin_addr;
 	iphdr->ip_src = src->sin_addr;
 
-    // Making things right
-    iphdr->ip_tos = 0;
-    iphdr->ip_p = 17;
-    iphdr->ip_ttl = 64;
-    iphdr->ip_off = 0;
-    iphdr->ip_id = htons(0);
+    if(wellFormedOpt == 1)
+    {
+        // Making things right
+        iphdr->ip_tos = 0;
+        iphdr->ip_p = protocol;
+        iphdr->ip_ttl = 64;
+        iphdr->ip_off = 0;
+        iphdr->ip_id = htons(0);
+    }
 
     // Calculate the correct checksum of IP Header
     iphdr->ip_sum = in_cksum(iphdr, IP_HDR_SIZE);
@@ -211,7 +216,7 @@ int
 pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
     const struct sockaddr_in *dst)
 {
-    int rv = pkt_create_ipv4(buf, buflen, src, dst);
+    int rv = pkt_create_ipv4(buf, buflen, src, dst, 1, 9);
     if(rv == -1)
     {
         errno = ENOSPC;
@@ -239,7 +244,7 @@ pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
         return rv;
     }
 
-    rv = pkt_create_ipv4(buf, buflen, src, dst);
+    rv = pkt_create_ipv4(buf, buflen, src, dst,1, 1);
     if(rv == -1)
     {
         errno = ENOSPC;

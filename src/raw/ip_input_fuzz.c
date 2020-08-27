@@ -25,8 +25,8 @@
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
 
 #define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "192.168.0.5"
-#define SERVER_ADDR "192.168.0.1"
+#define CLIENT_ADDR "127.0.0.1"
+#define SERVER_ADDR "127.0.0.1"
 #define NETMASK "255.255.255.0"
 
 
@@ -38,7 +38,7 @@ main(void)
 	int rv = EXIT_FAILURE;
 	unsigned char packet[sizeof(randBuf)];
 
-	// Creating the packet here
+	// Original Packet Data
 	printf("Length of original Data: %ld\n", sizeof(randBuf));
 	printf("Original Data:\n");
 	int bufLen = sizeof(randBuf);
@@ -63,17 +63,20 @@ main(void)
 	if (tunfd == -1)
 		return rv;
 	
+	// Packet creation
 	memcpy(packet, randBuf, sizeof(randBuf));
 
 	if (pkt_create_ipv4(packet, sizeof(packet), &server_addr,
-	    &client_addr) == -1)
+	    &client_addr, 0, 0) == -1)
 	{
 		warn("Can't create packet");
 		goto out;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	printf("Written: %ld\n", written);
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_ip_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
 	rv = EXIT_SUCCESS;
 
