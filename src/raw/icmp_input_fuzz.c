@@ -1,6 +1,10 @@
 /**
  * To compile this file:
- * gcc pkt_create.c net_config.c icmp_input_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
+ * 
+ * ASAN_OPTIONS=detect_container_overflow=0 clang -fsanitize=address 
+ * pkt_create.c net_config.c icmp_input_fuzz.c 
+ * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun -g
+ * 
  */
 
 #include <stdio.h>
@@ -24,10 +28,9 @@
 
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabc";
 
-#define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "192.168.0.5"
-#define SERVER_ADDR "192.168.0.1"
-#define NETMASK "255.255.255.0"
+#define CLIENT_ADDR "127.0.0.1"
+#define SERVER_ADDR "127.0.0.1"
+#define NETMASK "255.0.0.0"
 
 int 
 main(void)
@@ -55,12 +58,6 @@ main(void)
 		return rv;
 	if (makeaddr(&netmask, NETMASK) == -1)
 		return rv;
-
-	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
-	    &netmask);
-	if (tunfd == -1)
-		return rv;
 	
 	memcpy(packet, randBuf, sizeof(randBuf));
 
@@ -77,8 +74,5 @@ main(void)
 	rump_unschedule();
 
 	rv = EXIT_SUCCESS;
-
-out:
-	rump_sys_close(tunfd);
 	return rv;
 }
