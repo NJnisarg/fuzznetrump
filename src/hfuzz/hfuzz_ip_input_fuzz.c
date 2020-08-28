@@ -1,8 +1,8 @@
 /**
  * To compile this file:
  * 
- * ASAN_OPTIONS=detect_container_overflow=0 clang -fsanitize=address 
- * pkt_create.c net_config.c ip_input_fuzz.c 
+ * ASAN_OPTIONS=detect_container_overflow=0 hfuzz-clang -fsanitize=address 
+ * pkt_create.c net_config.c hfuzz_ip_input_fuzz.c 
  * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun -g
  * 
  */
