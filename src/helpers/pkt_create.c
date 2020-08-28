@@ -216,7 +216,7 @@ int
 pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
     const struct sockaddr_in *dst)
 {
-    int rv = pkt_create_ipv4(buf, buflen, src, dst, 1, 9);
+    int rv = pkt_create_ipv4(buf, buflen, src, dst, 1, 17);
     if(rv == -1)
     {
         errno = ENOSPC;
@@ -226,6 +226,7 @@ pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
     // We will set only the checksum to zero. Other fields we will let be random
     struct udphdr *udp = (struct udphdr *)(buf + IP_HDR_SIZE);
     udp->uh_sum = 0; // If we set this to zero the checksum is made optional and will be ignored
+    udp->uh_ulen = htons((uint16_t)(buflen - IP_HDR_SIZE)); // Setting the corrent length of UDP
 
     print_udpPkt(udp);
 

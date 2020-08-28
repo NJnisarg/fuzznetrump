@@ -1,3 +1,12 @@
+/**
+ * To compile this file:
+ * 
+ * ASAN_OPTIONS=detect_container_overflow=0 hfuzz-clang -fsanitize=address 
+ * pkt_create.c net_config.c hfuzz_ip6_input_fuzz.c 
+ * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_netinet6 -lrumpnet_tun -g
+ * 
+ */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -18,13 +27,11 @@
 #include "../include/net_config.h"
 #include "../include/pkt_create.h"
 
-#define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "2001:db8::1234"
-#define SERVER_ADDR "2001:db8::1235"
+#define CLIENT_ADDR "::1"
+#define SERVER_ADDR "::1"
 #define PREFIX_MASK "ffff:ffff:ffff:ffff:0000:0000:0000:0000"
 
 /* Global vars */
-int tunfd, sock;
 struct sockaddr_in6 client_addr, server_addr, prefix;
 
 /* entry point for library fuzzers (libFuzzer/honggfuzz) */
@@ -46,18 +53,10 @@ ip6_input_fuzz(const uint8_t *randBuf, size_t bufLen)
 		return rv;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	rv = 0;
-
-    if (written == -1) {
-		warn("sendto failed");
-		return rv;
-	}
-
-	if ((size_t)written != sizeof(packet)) {
-		warnx("Incomplete write: %zd != %zu", written, sizeof(packet));
-		return rv;
-	}
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_ip6_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
     rv = 0;
     return rv;
@@ -79,43 +78,7 @@ void Initialize()
 	if (makeaddr6(&prefix, PREFIX_MASK) == -1)
 		__builtin_trap();
 
-	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun6(DEVICE, &client_addr, &server_addr,
-	    &prefix);
-	if (tunfd == -1)
-		__builtin_trap();
-
-	// Creating the socket
-	if ((sock = rump_sys_socket(AF_INET6, SOCK_RAW, IPPROTO_RAW)) == -1) {
-		warn("Can't open raw socket");
-		rump_sys_close(tunfd);
-		__builtin_trap();
-	}
-	
-	// Binding newly created socket to given IP and verification 
-	if ((rump_sys_bind(sock, (const struct sockaddr *)&client_addr,
-	    sizeof(client_addr))) == -1)
-	{ 
-		warn("Can't bind socket"); 
-		goto out;
-	}
-
-	// Setting the header included flag for RAW IP to not touch the
-	// IP header
-	// int one = 1;
-	// if (rump_sys_setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &one,
-	//     sizeof(one)) == -1)
-	// {
-	//     warn("Cannot set HDRINCL!");
-	//     goto out;
-	// }
-
     return;
-
-out:
-    rump_sys_close(tunfd);
-    rump_sys_close(sock);
-    __builtin_trap();
 }
 
 int
@@ -139,7 +102,3 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
 	return 0;
 }
-
-#ifdef MAIN
-
-#endif

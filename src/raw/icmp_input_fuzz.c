@@ -71,8 +71,10 @@ main(void)
 		goto out;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	printf("Written: %ld\n", written);
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_icmp_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
 	rv = EXIT_SUCCESS;
 

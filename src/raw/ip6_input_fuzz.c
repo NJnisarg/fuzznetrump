@@ -1,6 +1,10 @@
 /**
  * To compile this file:
- * gcc pkt_create.c net_config.c ip_input_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
+ * 
+ * ASAN_OPTIONS=detect_container_overflow=0 clang -fsanitize=address 
+ * pkt_create.c net_config.c ip6_input_fuzz.c 
+ * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_netinet6 -lrumpnet_tun -g
+ * 
  */
 
 #include <stdio.h>
@@ -24,10 +28,10 @@
 
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabcabcdefghijklmnopqrstuvwxyzabc";
 
-#define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "2001:db8::1234"
-#define SERVER_ADDR "2001:db8::1235"
+#define CLIENT_ADDR "::1"
+#define SERVER_ADDR "::1"
 #define PREFIX_MASK "ffff:ffff:ffff:ffff:0000:0000:0000:0000"
+
 int 
 main(void)
 {
@@ -54,11 +58,6 @@ main(void)
 		return rv;
 	if (makeaddr6(&prefix_mask, PREFIX_MASK) == -1)
 		return rv;
-
-	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun6(DEVICE, &client_addr, &server_addr, &prefix_mask);
-	if (tunfd == -1)
-		return rv;
 	
 	memcpy(packet, randBuf, sizeof(randBuf));
 
@@ -69,12 +68,11 @@ main(void)
 		goto out;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	printf("Written: %ld\n", written);
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_ip6_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
 	rv = EXIT_SUCCESS;
-
-out:
-	rump_sys_close(tunfd);
 	return rv;
 }

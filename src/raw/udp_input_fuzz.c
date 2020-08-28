@@ -25,8 +25,8 @@
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
 
 #define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "192.168.0.5"
-#define SERVER_ADDR "192.168.0.1"
+#define CLIENT_ADDR "127.0.0.1"
+#define SERVER_ADDR "127.0.0.1"
 #define NETMASK "255.255.255.0"
 #define IP_HDR_SIZE sizeof(struct ip)
 
@@ -73,8 +73,10 @@ main(void)
 		goto out;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	printf("Written: %ld\n", written);
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_ip_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
 	rv = EXIT_SUCCESS;
 
