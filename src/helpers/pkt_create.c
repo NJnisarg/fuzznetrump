@@ -12,6 +12,7 @@
 
 #include "../include/pkt_create.h"
 
+#define UDP_HDR_SIZE sizeof(struct udphdr)
 #define IP_HDR_SIZE sizeof(struct ip)
 #define IP6_HDR_SIZE sizeof(struct ip6_hdr)
 
@@ -216,11 +217,17 @@ int
 pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
     const struct sockaddr_in *dst)
 {
+    if(buflen < IP_HDR_SIZE + UDP_HDR_SIZE)
+    {
+        errno = ENOSPC;
+		return -1;
+    }
+    
     int rv = pkt_create_ipv4(buf, buflen, src, dst, 1, 17);
     if(rv == -1)
     {
         errno = ENOSPC;
-		return rv;
+		return -1;
     }
 
     // We will set only the checksum to zero. Other fields we will let be random

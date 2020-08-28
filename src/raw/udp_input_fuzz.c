@@ -1,6 +1,10 @@
 /**
  * To compile this file:
- * gcc pkt_create.c net_config.c ip_input_fuzz.c -lrump -lrumpvfs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun
+ * 
+ * ASAN_OPTIONS=detect_container_overflow=0 clang -fsanitize=address 
+ * pkt_create.c net_config.c ip_input_fuzz.c 
+ * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun -g
+ * 
  */
 
 #include <stdio.h>
@@ -24,10 +28,9 @@
 
 static const unsigned char randBuf[] = "abcdefghijklmnopqrstuvwxyzabc";
 
-#define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "127.0.0.1"
 #define SERVER_ADDR "127.0.0.1"
-#define NETMASK "255.255.255.0"
+#define NETMASK "255.0.0.0"
 #define IP_HDR_SIZE sizeof(struct ip)
 
 
@@ -35,9 +38,10 @@ int
 main(void)
 {
 
+	int sock;
 	struct sockaddr_in client_addr, server_addr, netmask;
 	int rv = EXIT_FAILURE;
-	unsigned char packet[IP_HDR_SIZE + sizeof(randBuf)]; // We offset the randBuf by size of IP
+	unsigned char packet[sizeof(randBuf)]; // We offset the randBuf by size of IP
 
 	// Creating the packet here
 	printf("Length of original Data: %ld\n", sizeof(randBuf));
@@ -58,13 +62,22 @@ main(void)
 	if (makeaddr(&netmask, NETMASK) == -1)
 		return rv;
 
-	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
-	    &netmask);
-	if (tunfd == -1)
+	// Creating the socket
+	if ((sock = rump_sys_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+		warn("Can't open raw socket");
 		return rv;
+	}
 	
-	memcpy(packet + IP_HDR_SIZE, randBuf, sizeof(randBuf));
+      
+	// Binding newly created socket to given IP and verification 
+	if ((rump_sys_bind(sock, (const struct sockaddr *)&client_addr,
+	    sizeof(client_addr))) == -1)
+	{ 
+		warn("Can't bind socket"); 
+		goto out;
+	}
+	
+	memcpy(packet, randBuf, sizeof(randBuf));
 
 	if (pkt_create_udp4(packet, sizeof(packet), &server_addr,
 	    &client_addr) == -1)
@@ -81,6 +94,6 @@ main(void)
 	rv = EXIT_SUCCESS;
 
 out:
-	rump_sys_close(tunfd);
+	close(sock);
 	return rv;
 }

@@ -1,3 +1,12 @@
+/**
+ * To compile this file:
+ * 
+ * ASAN_OPTIONS=detect_container_overflow=0 hfuzz-clang -fsanitize=address 
+ * pkt_create.c net_config.c hfuzz_udp_input_fuzz.c 
+ * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun -g
+ * 
+ */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -19,14 +28,13 @@
 #include "../include/net_config.h"
 #include "../include/pkt_create.h"
 
-#define DEVICE "/dev/tun0"
-#define CLIENT_ADDR "192.168.0.5"
-#define SERVER_ADDR "192.168.0.1"
-#define NETMASK "255.255.255.0"
+#define CLIENT_ADDR "127.0.0.1"
+#define SERVER_ADDR "127.0.0.1"
+#define NETMASK "255.0.0.0"
 #define IP_HDR_SIZE sizeof(struct ip)
 
 /* Global vars */
-int tunfd, sock;
+int sock;
 struct sockaddr_in client_addr, server_addr, netmask;
 
 /* entry point for library fuzzers (libFuzzer/honggfuzz) */
@@ -48,18 +56,10 @@ udp_input_fuzz(const uint8_t *randBuf, size_t bufLen)
 		return rv;
 	}
 
-	ssize_t written = rump_sys_write(tunfd, randBuf, sizeof(randBuf));
-	rv = 0;
-
-    if (written == -1) {
-		warn("sendto failed");
-		return rv;
-	}
-
-	if ((size_t)written != sizeof(packet)) {
-		warnx("Incomplete write: %zd != %zu", written, sizeof(packet));
-		return rv;
-	}
+	// Call the fuzzer function inside rump
+	rump_schedule();
+    rumpns_fuzzrump_ip_input((char *)packet, sizeof(packet));
+	rump_unschedule();
 
     rv = 0;
     return rv;
@@ -81,12 +81,6 @@ void Initialize()
 	if (makeaddr(&netmask, NETMASK) == -1)
 		__builtin_trap();
 
-	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
-	    &netmask);
-	if (tunfd == -1)
-		__builtin_trap();
-
 	// Creating the socket
 	if ((sock = rump_sys_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
 		warn("Can't open udp socket");
@@ -105,7 +99,6 @@ void Initialize()
     return;
 
 out:
-    rump_sys_close(tunfd);
     rump_sys_close(sock);
     __builtin_trap();
 }
@@ -131,7 +124,3 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
 	return 0;
 }
-
-#ifdef MAIN
-
-#endif
