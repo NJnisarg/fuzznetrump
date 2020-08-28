@@ -1,3 +1,12 @@
+/**
+ * To compile this file:
+ * 
+ * ASAN_OPTIONS=detect_container_overflow=0 clang -fsanitize=address 
+ * pkt_create.c net_config.c ip_input_fuzz.c 
+ * -lrump -lrumpvfs -lrumpvfs_nofifofs -lrumpnet -lrumpnet_net -lrumpnet_netinet -lrumpnet_tun -g
+ * 
+ */
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -18,13 +27,11 @@
 #include "../include/net_config.h"
 #include "../include/pkt_create.h"
 
-#define DEVICE "/dev/tun0"
 #define CLIENT_ADDR "127.0.0.1"
 #define SERVER_ADDR "127.0.0.1"
-#define NETMASK "255.255.255.0"
+#define NETMASK "255.0.0.0"
 
 /* Global vars */
-int tunfd, sock;
 struct sockaddr_in client_addr, server_addr, netmask;
 
 /* entry point for library fuzzers (libFuzzer/honggfuzz) */
@@ -35,6 +42,7 @@ static int
 ip_input_fuzz(const uint8_t *randBuf, size_t bufLen)
 {
     int rv = -1;
+
     // Preparing the IP packet
     unsigned char packet[bufLen];
     memcpy(packet, randBuf, bufLen);
@@ -71,43 +79,7 @@ void Initialize()
 	if (makeaddr(&netmask, NETMASK) == -1)
 		__builtin_trap();
 
-	// Setting up the tun device
-	int tunfd = netcfg_rump_if_tun(DEVICE, &client_addr, &server_addr,
-	    &netmask);
-	if (tunfd == -1)
-		__builtin_trap();
-
-	// Creating the socket
-	if ((sock = rump_sys_socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) == -1) {
-		warn("Can't open raw socket");
-		rump_sys_close(tunfd);
-		__builtin_trap();
-	}
-	
-	// Binding newly created socket to given IP and verification 
-	if ((rump_sys_bind(sock, (const struct sockaddr *)&client_addr,
-	    sizeof(client_addr))) == -1)
-	{ 
-		warn("Can't bind socket"); 
-		goto out;
-	}
-
-	// Setting the header included flag for RAW IP to not touch the
-	// IP header
-	int one = 1;
-	if (rump_sys_setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &one,
-	    sizeof(one)) == -1)
-	{
-	    warn("Cannot set HDRINCL!");
-	    goto out;
-	}
-
     return;
-
-out:
-    rump_sys_close(tunfd);
-    rump_sys_close(sock);
-    __builtin_trap();
 }
 
 int

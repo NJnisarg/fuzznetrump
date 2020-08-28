@@ -40,14 +40,14 @@ ip_output_fuzz(const uint8_t *randBuf, size_t bufLen)
     memcpy(packet, randBuf, bufLen);
 
 	if (pkt_create_ipv4(packet, sizeof(packet), &client_addr,
-	    &server_addr) == -1)
+	    &server_addr, 0, 0) == -1)
 	{
 		warn("Can't create packet");
 		return rv;
 	}
 
     // Sending down the socket
-    ssize_t written = rump_sys_sendto(sock , randBuf , bufLen , 0, (struct sockaddr *) &server_addr, sizeof (server_addr));
+    ssize_t written = rump_sys_sendto(sock , packet , bufLen , 0, (struct sockaddr *) &server_addr, sizeof (server_addr));
     if (written == -1) {
 		warn("sendto failed");
 		return rv;
@@ -138,7 +138,3 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
 	return 0;
 }
-
-#ifdef MAIN
-
-#endif
