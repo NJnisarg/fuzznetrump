@@ -1,0 +1,42 @@
+diff --git a/sys/netinet6/ip6_input.c b/sys/netinet6/ip6_input.c
+index d93c999..639ba24 100644
+--- a/sys/netinet6/ip6_input.c
++++ b/sys/netinet6/ip6_input.c
+@@ -230,6 +230,37 @@ ip6intr(void *arg __unused)
+ 	SOFTNET_KERNEL_UNLOCK_UNLESS_NET_MPSAFE();
+ }
+ 
++/*
++ * The function to be used for rumpkernel fuzzing
++ */
++void fuzzrump_ip6_input(char *d, size_t len);
++
++void
++fuzzrump_ip6_input(char *d, size_t len)
++{
++	struct mbuf *m;
++	struct psref psref;
++	struct ifnet *rcvif;
++
++	/* build mbuf */
++	m = m_gethdr(M_NOWAIT, MT_DATA);
++	KASSERT(m);
++	m->m_len = m->m_pkthdr.len = 0;
++	m_copyback(m, 0, len, d);
++
++	/* push it to the lo0 interface */
++	m_set_rcvif(m, lo0ifp);
++
++	/* fake softint */
++	curlwp->l_pflag |= LP_INTR;
++	SOFTNET_KERNEL_LOCK_UNLESS_NET_MPSAFE();
++	rcvif = m_get_rcvif_psref(m, &psref);
++	ip6_input(m, rcvif);
++	m_put_rcvif_psref(rcvif, &psref);
++	SOFTNET_KERNEL_UNLOCK_UNLESS_NET_MPSAFE();
++	curlwp->l_pflag ^= LP_INTR;
++}
++
+ static void
+ ip6_input(struct mbuf *m, struct ifnet *rcvif)
+ {

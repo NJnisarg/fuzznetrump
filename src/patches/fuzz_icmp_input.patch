@@ -1,0 +1,51 @@
+diff --git a/sys/netinet/ip_icmp.c b/sys/netinet/ip_icmp.c
+index e9122cc..c1215c7 100644
+--- a/sys/netinet/ip_icmp.c
++++ b/sys/netinet/ip_icmp.c
+@@ -400,6 +400,46 @@ struct sockaddr_in icmpsrc = {
+ };
+ 
+ /*
++ * The function to fuzz icmp input processing
++ * inside rumpkernel
++ */
++void fuzzrump_icmp_input(char *d, size_t len);
++
++void
++fuzzrump_icmp_input(char *d, size_t len)
++{
++        struct mbuf *m;
++
++        /* build mbuf */
++        m = m_gethdr(M_NOWAIT, MT_DATA);
++        KASSERT(m);
++        m->m_len = m->m_pkthdr.len = 0;
++        m_copyback(m, 0, len, d);
++        m->m_len = m->m_pkthdr.len = len;
++
++        /* push it to the lo0 interface */
++        m_set_rcvif(m, lo0ifp);
++
++	/* Push the packet up ICMP input processing */
++	int s;
++	s = splsoftnet();
++	mutex_enter(softnet_lock);
++	KERNEL_LOCK_UNLESS_NET_MPSAFE();
++
++	struct ip *ip = NULL;
++	ip = mtod(m, struct ip *);
++
++	int hlen = ip->ip_hl << 2;
++	const int off = hlen, nh = ip->ip_p;
++
++	_icmp_input(m, off, nh);
++
++	KERNEL_UNLOCK_UNLESS_NET_MPSAFE();
++	mutex_exit(softnet_lock);
++	splx(s);
++}
++
++/*
+  * Process a received ICMP message.
+  */
+ static void
