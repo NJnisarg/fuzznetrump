@@ -78,8 +78,60 @@ This link to the project is [here](https://summerofcode.withgoogle.com/projects/
 
 As a part of the fuzzing effort for certain protocols we did capture a few bugs while carrying out fuzzing. A couple of them are listed here:
 
-1.) A heap-buffer-overflow bug caught by the use of ASAN while fuzzing ICMP input processing function while calculating the internet checksum.
-2.) Another problem we detected was a kernel panic when a malformed packet not aligned according to it's length was processed by the IP input processing function.
+1.) A heap-buffer-overflow bug caught by the use of ASAN while fuzzing ICMP input processing function while calculating the internet checksum. Here is a snippet of the GDB output:
+```
+==4903==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x625000142000 at pc 0x7f7ff6c8ad1a bp 0x7f7fffffc7b0 sp 0x7f7fffffc7a8
+READ of size 4 at 0x625000142000 thread T0
+[New process 4903]
+[Detaching after fork from child process 5809]
+    #0 0x7f7ff6c8ad19 in rumpns_cpu_in_cksum /media/njnisarg/Projects/netbsd/src/sys/rump/net/lib/libnet/../../../../netinet/cpu_in_cksum.c:302:15
+    #1 0x7f7ff6c452aa in _icmp_input /media/njnisarg/Projects/netbsd/src/sys/rump/net/lib/libnet/../../../../netinet/ip_icmp.c:480:6
+    #2 0x7f7ff6c4acff in rumpns_fuzzrump_icmp_input /media/njnisarg/Projects/netbsd/src/sys/rump/net/lib/libnet/../../../../netinet/ip_icmp.c:431:2
+    #3 0x526158 in icmp_input_fuzz /tmp/hfuzz/hfuzz_icmp_input_fuzz.c:61:5
+    #4 0x525f26 in LLVMFuzzerTestOneInput /tmp/hfuzz/hfuzz_icmp_input_fuzz.c:115:6
+    #5 0x5158e6 in HonggfuzzRunOneInput (/tmp/hfuzz/a.out+0x5158e6)
+    #6 0x515ac2 in HonggfuzzMain (/tmp/hfuzz/a.out+0x515ac2)
+    #7 0x41ec8c in ___start (/tmp/hfuzz/a.out+0x41ec8c)
+
+0x625000142000 is located 0 bytes to the right of 4096-byte region [0x625000141000,0x625000142000)
+allocated by thread T0 here:
+    #0 0x50c309 in posix_memalign (/tmp/hfuzz/a.out+0x50c309)
+    #1 0x7f7ff520f5ba in rumpuser_malloc /media/njnisarg/Projects/netbsd/src/lib/librumpuser/rumpuser_mem.c:55:7
+    #2 0x7f7ff76f2621 in rump_hypermalloc /media/njnisarg/Projects/netbsd/src/lib/librump/../../sys/rump/librump/rumpkern/vm.c:1282:10
+    #3 0x7f7ff76f2b44 in rumpns_uvm_km_kmem_alloc /media/njnisarg/Projects/netbsd/src/lib/librump/../../sys/rump/librump/rumpkern/vm.c:886:16
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /media/njnisarg/Projects/netbsd/src/sys/rump/net/lib/libnet/../../../../netinet/cpu_in_cksum.c:302:15 in rumpns_cpu_in_cksum
+Shadow bytes around the buggy address:
+
+```
+
+2.) Another problem we detected was a kernel panic when a malformed packet not aligned according to it's length was processed by the IP input processing function. Here is a snippet of the GDB backtrace:
+```
+Thread 1 "" received signal SIGABRT, Aborted.
+0x00007f7ff3b7f0fa in _lwp_kill () from /usr/lib/libc.so.12
+(gdb) bt
+#0  0x00007f7ff3b7f0fa in _lwp_kill () from /usr/lib/libc.so.12
+#1  0x00007f7ff3b7ed69 in abort () at /media/njnisarg/Projects/netbsd/src/lib/libc/stdlib/abort.c:74
+#2  0x00007f7ff521ca08 in rumpuser_exit (rv=-1) at /media/njnisarg/Projects/netbsd/src/lib/librumpuser/rumpuser.c:236
+#3  0x00007f7ff770235b in cpu_reboot (howto=<optimized out>, bootstr=<optimized out>) at /media/njnisarg/Projects/netbsd/src/lib/librump/../../sys/rump/librump/rumpkern/emul.c:429
+#4  0x00007f7ff7601c7c in kern_reboot (howto=4, bootstr=0x0) at /media/njnisarg/Projects/netbsd/src/lib/librump/../../sys/rump/../kern/kern_reboot.c:73
+#5  0x00007f7ff75f6676 in vpanic (fmt=<optimized out>, ap=<optimized out>) at /media/njnisarg/Projects/netbsd/src/lib/librump/../../sys/rump/../kern/subr_prf.c:290
+#6  0x00007f7ff7533771 in panic (fmt=0x7f7ff707c680 "%s: m_data not in packet(dat = %p, len = %d, low = %p, high = %p)")
+    at /media/njnisarg/Projects/netbsd/src/lib/librump/../../sys/rump/../kern/subr_prf.c:209
+#7  0x00007f7ff706c4b0 in m_verify_packet (m=<optimized out>) at /media/njnisarg/Projects/netbsd/src/lib/librumpnet/../../sys/rump/../kern/uipc_mbuf.c:2272
+#8  0x00007f7ff6c34a68 in ip_input (m=0x1639) at /media/njnisarg/Projects/netbsd/src/sys/rump/net/lib/libnet/../../../../netinet/ip_input.c:808
+#9  0x00007f7ff6c31207 in fuzzrump_ip_input (d=<optimized out>, len=5022) at /media/njnisarg/Projects/netbsd/src/sys/rump/net/lib/libnet/../../../../netinet/ip_input.c:430
+#10 0x0000000000526104 in ip_input_fuzz (randBuf=0x7f7fe7dff800 "J\210", bufLen=5022) at hfuzz_ip_input_fuzz.c:59
+#11 0x0000000000525ec7 in LLVMFuzzerTestOneInput (Data=0x7f7fe7dff800 "J\210", Size=5022) at hfuzz_ip_input_fuzz.c:95
+#12 0x0000000000515887 in HonggfuzzRunOneInput ()
+#13 0x0000000000515a63 in HonggfuzzMain ()
+#14 0x000000000041ec2d in ___start ()
+#15 0x00007f7ff7c0cb70 in ?? () from /libexec/ld.elf_so
+#16 0x0000000000000001 in ?? ()
+#17 0x00007f7fffffee28 in ?? ()
+#18 0x0000000000000000 in ?? ()
+
+```
 
 #### Further steps
 
