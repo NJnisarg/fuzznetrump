@@ -84,7 +84,6 @@ void Initialize()
 	// Creating the socket
 	if ((sock = rump_sys_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
 		warn("Can't open udp socket");
-		rump_sys_close(tunfd);
 		__builtin_trap();
 	}
 	
@@ -93,14 +92,10 @@ void Initialize()
 	    sizeof(client_addr))) == -1)
 	{ 
 		warn("Can't bind socket"); 
-		goto out;
+		__builtin_trap();
 	}
 
     return;
-
-out:
-    rump_sys_close(sock);
-    __builtin_trap();
 }
 
 int

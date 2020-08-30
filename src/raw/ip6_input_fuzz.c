@@ -65,7 +65,7 @@ main(void)
 	    &client_addr) == -1)
 	{
 		warn("Can't create packet");
-		goto out;
+		return rv;
 	}
 
 	// Call the fuzzer function inside rump

@@ -145,7 +145,7 @@ getRandCode(uint8_t type, uint8_t code)
     return retCode;
 }
 
-/*
+/**
 * Packet Structure creation for IPv4
 * Set the wellFormedOpt to 1 to make a well formed packet for upper protocols
 * Use the protocol value to set the upper layer protocol
@@ -192,6 +192,10 @@ pkt_create_ipv4(void *buf, size_t buflen, const struct sockaddr_in *src,
 	return 0;
 }
 
+/**
+* Packet Structure creation for IPv6
+*/
+
 int
 pkt_create_ipv6(void *buf, size_t buflen, const struct sockaddr_in6 *src,
     const struct sockaddr_in6 *dst)
@@ -212,6 +216,10 @@ pkt_create_ipv6(void *buf, size_t buflen, const struct sockaddr_in6 *src,
 
 	return 0;
 }
+
+/**
+* Packet Structure creation for UDP based on IPv4
+*/
 
 int
 pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
@@ -239,6 +247,10 @@ pkt_create_udp4(void *buf, size_t buflen, const struct sockaddr_in *src,
 
     return 0;
 }
+
+/**
+* Packet Structure creation for ICMP based on IPv4
+*/
 
 int 
 pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
@@ -268,6 +280,10 @@ pkt_create_icmp4(void *buf, size_t buflen, const struct sockaddr_in *src,
 
     return rv;
 }
+
+/**
+* Packet Structure creation for Ethernet
+*/
 
 int
 pkt_create_ether(void *buf, size_t buflen, const char* src_mac, const char* dst_mac)

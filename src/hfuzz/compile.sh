@@ -1,0 +1,1 @@
+ASAN_OPTIONS=detect_container_overflow=0 hfuzz-clang -fsanitize=address $1 ../helpers/pkt_create.c ../helpers/net_config.c -lrump -lrumpnet -lrumpnet_net -lrumpnet_tun -lrumpnet_netinet -lrumpnet_netinet6 -lrumpvfs -lrumpvfs_nofifofs -lrumpuser -g
