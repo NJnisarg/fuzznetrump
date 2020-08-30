@@ -79,7 +79,7 @@ This link to the project is [here](https://summerofcode.withgoogle.com/projects/
 As a part of the fuzzing effort for certain protocols we did capture a few bugs while carrying out fuzzing. A couple of them are listed here:
 
 1.) A heap-buffer-overflow bug caught by the use of ASAN while fuzzing ICMP input processing function while calculating the internet checksum.
-2.) Another problem we detected was a kernel panic when a malformed packet not aligned according to it's length was processed by the IP input processing function
+2.) Another problem we detected was a kernel panic when a malformed packet not aligned according to it's length was processed by the IP input processing function.
 
 #### Further steps
 
