@@ -62,7 +62,7 @@ This link to the project is [here](https://summerofcode.withgoogle.com/projects/
 
 #### GSoC Reports
 - As a part of GSoC in order to dive into details, reports for the different phases of GSoC are linked in this repo. Please have a look. For a brief information, read the below sections.
-- Reports located at: `https://github.com/NJnisarg/fuzznetrump/docs`
+- Reports located at: `https://github.com/NJnisarg/fuzznetrump/tree/master/docs`
 
 
 #### Protocol Fuzzing
