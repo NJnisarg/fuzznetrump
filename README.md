@@ -60,6 +60,11 @@ This link to the project is [here](https://summerofcode.withgoogle.com/projects/
 
 ## Work done as a part of GSoC
 
+#### GSoC Reports
+- As a part of GSoC in order to dive into details, reports for the different phases of GSoC are linked in this repo. Please have a look. For a brief information, read the below sections.
+- Reports located at: `https://github.com/NJnisarg/fuzznetrump/docs`
+
+
 #### Protocol Fuzzing
 
 - Mainly the worked done revolved around developing a set of files for which can be seen under `src/hfuzz` which carry out the fuzzing of various major protocols of the Internet network stack.
